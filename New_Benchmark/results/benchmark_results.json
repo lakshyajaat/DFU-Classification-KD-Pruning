@@ -1,0 +1,96 @@
+{
+  "config": {
+    "data_dir": "/home/lakshya/.cache/kagglehub/datasets/laithjj/diabetic-foot-ulcer-dfu/versions/1",
+    "kaggle_download": false,
+    "train_ratio": 0.7,
+    "val_ratio": 0.15,
+    "test_ratio": 0.15,
+    "teacher_epochs": 10,
+    "student_epochs": 10,
+    "teacher_lr": 0.001,
+    "student_lr": 0.001,
+    "batch_size": 16,
+    "image_size": 224,
+    "kd_temp": 10.0,
+    "kd_alpha": 0.7,
+    "prune_rounds": 2,
+    "prune_fraction": 0.2,
+    "finetune_epochs": 3,
+    "finetune_lr": 0.0001,
+    "output_dir": "./results",
+    "num_workers": 4,
+    "seed": 42
+  },
+  "teacher": {
+    "metrics": {
+      "accuracy": 1.0,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "params": 23512130,
+    "gflops": null,
+    "latency_gpu": {
+      "mean_ms": 1.4189815521240234,
+      "std_ms": 0.0045145576272665145,
+      "min_ms": 1.4107227325439453,
+      "max_ms": 1.4281272888183594
+    },
+    "latency_cpu": {
+      "mean_ms": 15.528874397277832,
+      "std_ms": 0.10387687842963511,
+      "min_ms": 15.317440032958984,
+      "max_ms": 15.840768814086914
+    }
+  },
+  "student_kd": {
+    "metrics": {
+      "accuracy": 1.0,
+      "f1": 1.0,
+      "precision": 1.0,
+      "recall": 1.0
+    },
+    "params": 2226434,
+    "gflops": null,
+    "latency_gpu": {
+      "mean_ms": 0.9418821334838867,
+      "std_ms": 0.013119800722781898,
+      "min_ms": 0.9279251098632812,
+      "max_ms": 0.9968280792236328
+    },
+    "latency_cpu": {
+      "mean_ms": 5.124049186706543,
+      "std_ms": 0.07156281598404801,
+      "min_ms": 5.058526992797852,
+      "max_ms": 5.473852157592773
+    }
+  },
+  "pruning_rounds": [
+    {
+      "round": 1,
+      "pruned_filters": 3390,
+      "metrics": {
+        "accuracy": 0.96875,
+        "f1": 0.9686900708387147,
+        "precision": 0.9698039215686274,
+        "recall": 0.9682614133833646
+      },
+      "total_params": 2226434,
+      "nonzero_params": 2087695,
+      "gflops": null
+    },
+    {
+      "round": 2,
+      "pruned_filters": 3390,
+      "metrics": {
+        "accuracy": 0.9625,
+        "f1": 0.9624941397093296,
+        "precision": 0.9624999999999999,
+        "recall": 0.9627892432770482
+      },
+      "total_params": 2226434,
+      "nonzero_params": 2086916,
+      "gflops": null
+    }
+  ]
+}

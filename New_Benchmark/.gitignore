@@ -1,0 +1,14 @@
+# Model checkpoints (large files)
+*.pth
+*.pt
+
+# Data copies (already in Dataset folder)
+results/data/
+kfold_results/all_data/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/

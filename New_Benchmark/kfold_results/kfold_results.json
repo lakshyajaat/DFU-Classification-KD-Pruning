@@ -1,0 +1,271 @@
+{
+  "config": {
+    "data_dir": "/home/lakshya/.cache/kagglehub/datasets/laithjj/diabetic-foot-ulcer-dfu/versions/1",
+    "kaggle_download": false,
+    "k_folds": 5,
+    "teacher_epochs": 15,
+    "student_epochs": 15,
+    "teacher_lr": 0.0005,
+    "student_lr": 0.0005,
+    "batch_size": 16,
+    "image_size": 224,
+    "early_stop_patience": 5,
+    "kd_temp": 10.0,
+    "kd_alpha": 0.7,
+    "prune_rounds": 2,
+    "prune_fraction": 0.2,
+    "finetune_epochs": 3,
+    "finetune_lr": 0.0001,
+    "output_dir": "./kfold_results",
+    "num_workers": 4,
+    "seed": 42
+  },
+  "folds": [
+    {
+      "fold": 1,
+      "teacher": {
+        "accuracy": 0.990521327014218,
+        "f1": 0.9905160014383315,
+        "precision": 0.9905160014383315,
+        "recall": 0.9905160014383315
+      },
+      "student_kd": {
+        "accuracy": 0.990521327014218,
+        "f1": 0.9905108832523836,
+        "precision": 0.990909090909091,
+        "recall": 0.9902912621359223
+      },
+      "pruning_rounds": [
+        {
+          "round": 1,
+          "pruned_filters": 3390,
+          "accuracy": 0.990521327014218,
+          "f1": 0.9905160014383315,
+          "nonzero_params": 2088272
+        },
+        {
+          "round": 2,
+          "pruned_filters": 3390,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "nonzero_params": 2085463
+        }
+      ]
+    },
+    {
+      "fold": 2,
+      "teacher": {
+        "accuracy": 0.995260663507109,
+        "f1": 0.9952568281443184,
+        "precision": 0.9954128440366973,
+        "recall": 0.9951456310679612
+      },
+      "student_kd": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "pruning_rounds": [
+        {
+          "round": 1,
+          "pruned_filters": 3390,
+          "accuracy": 0.985781990521327,
+          "f1": 0.9857704844329549,
+          "nonzero_params": 2086810
+        },
+        {
+          "round": 2,
+          "pruned_filters": 3390,
+          "accuracy": 0.990521327014218,
+          "f1": 0.9905160014383315,
+          "nonzero_params": 2086405
+        }
+      ]
+    },
+    {
+      "fold": 3,
+      "teacher": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "student_kd": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "pruning_rounds": [
+        {
+          "round": 1,
+          "pruned_filters": 3390,
+          "accuracy": 0.995260663507109,
+          "f1": 0.9952538407899768,
+          "nonzero_params": 2091141
+        },
+        {
+          "round": 2,
+          "pruned_filters": 3390,
+          "accuracy": 0.995260663507109,
+          "f1": 0.9952538407899768,
+          "nonzero_params": 2087138
+        }
+      ]
+    },
+    {
+      "fold": 4,
+      "teacher": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "student_kd": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "pruning_rounds": [
+        {
+          "round": 1,
+          "pruned_filters": 3390,
+          "accuracy": 0.985781990521327,
+          "f1": 0.9857499831160937,
+          "nonzero_params": 2088917
+        },
+        {
+          "round": 2,
+          "pruned_filters": 3390,
+          "accuracy": 0.933649289099526,
+          "f1": 0.9329854809437387,
+          "nonzero_params": 2087993
+        }
+      ]
+    },
+    {
+      "fold": 5,
+      "teacher": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "student_kd": {
+        "accuracy": 1.0,
+        "f1": 1.0,
+        "precision": 1.0,
+        "recall": 1.0
+      },
+      "pruning_rounds": [
+        {
+          "round": 1,
+          "pruned_filters": 3390,
+          "accuracy": 0.976303317535545,
+          "f1": 0.9763011883100838,
+          "nonzero_params": 2088617
+        },
+        {
+          "round": 2,
+          "pruned_filters": 3390,
+          "accuracy": 1.0,
+          "f1": 1.0,
+          "nonzero_params": 2086036
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "teacher": {
+      "mean": 0.9971563981042653,
+      "std": 0.0037914691943127963,
+      "min": 0.990521327014218,
+      "max": 1.0,
+      "values": [
+        0.990521327014218,
+        0.995260663507109,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "student_kd": {
+      "mean": 0.9981042654028436,
+      "std": 0.003791469194312791,
+      "min": 0.990521327014218,
+      "max": 1.0,
+      "values": [
+        0.990521327014218,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ]
+    },
+    "pruned": {
+      "round_1": {
+        "mean": 0.9867298578199051,
+        "std": 0.006287440360863315,
+        "min": 0.976303317535545,
+        "max": 0.995260663507109,
+        "values": [
+          0.990521327014218,
+          0.985781990521327,
+          0.995260663507109,
+          0.985781990521327,
+          0.976303317535545
+        ]
+      },
+      "round_2": {
+        "mean": 0.9838862559241706,
+        "std": 0.02536320030380977,
+        "min": 0.933649289099526,
+        "max": 1.0,
+        "values": [
+          1.0,
+          0.990521327014218,
+          0.995260663507109,
+          0.933649289099526,
+          1.0
+        ]
+      }
+    }
+  },
+  "model_stats": {
+    "teacher": {
+      "params": 23512130,
+      "gflops": null,
+      "latency_cpu": {
+        "mean_ms": 13.568172454833984,
+        "std_ms": 0.2589129080820012,
+        "min_ms": 13.271808624267578,
+        "max_ms": 14.465093612670898
+      },
+      "latency_gpu": {
+        "mean_ms": 1.425471305847168,
+        "std_ms": 0.016113922128295894,
+        "min_ms": 1.4140605926513672,
+        "max_ms": 1.5294551849365234
+      }
+    },
+    "student": {
+      "params": 2226434,
+      "nonzero_params": 2086036,
+      "gflops": null,
+      "latency_cpu": {
+        "mean_ms": 5.112462043762207,
+        "std_ms": 0.01768064922639399,
+        "min_ms": 5.071163177490234,
+        "max_ms": 5.166530609130859
+      },
+      "latency_gpu": {
+        "mean_ms": 0.950922966003418,
+        "std_ms": 0.005969652723311147,
+        "min_ms": 0.9438991546630859,
+        "max_ms": 0.9729862213134766
+      }
+    }
+  }
+}
