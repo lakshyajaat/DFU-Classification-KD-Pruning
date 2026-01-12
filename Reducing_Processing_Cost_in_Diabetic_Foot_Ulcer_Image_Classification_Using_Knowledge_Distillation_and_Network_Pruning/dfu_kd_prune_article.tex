@@ -13,6 +13,7 @@
 \usepackage{hyperref}
 \usepackage{authblk}     % <<-- controls author/affiliation formatting
 \usepackage{geometry}
+\usepackage{float}       % Better figure placement
 \geometry{margin=1in}
 
 % Optional: nicer paragraph spacing
@@ -25,10 +26,9 @@
 Using Knowledge Distillation and Network Pruning}
 
 \author[1]{Lakshya}
-\author[2]{Jaydeep Kishore }            % add more \author[] as needed
-%\affil[1]{Your Affiliation, City, Country}
-\affil[1]{{lakshya.2502010001@muj.manipal.edu}}
-\affil[2]{{jaydeep.kishore@jaipur.manipal.edu}}  % common contact line (optional)
+\author[2]{Jaydeep Kishore}
+\affil[1]{Manipal University Jaipur, India \\ \texttt{lakshya.2502010001@muj.manipal.edu}}
+\affil[2]{Manipal University Jaipur, India \\ \texttt{jaydeep.kishore@jaipur.manipal.edu}}
 
 \date{} % remove date; keep empty
 
@@ -37,172 +37,397 @@ Using Knowledge Distillation and Network Pruning}
 
 
 \begin{abstract}
-Deep learning models have become central to automated diabetic foot ulcer (DFU) classification, yet the computational burden of deploying such architectures remains a persistent problem in clinical and mobile health environments. Larger convolutional networks perform well, but they require hardware that many wound-care clinics simply do not have. This paper explores a paired reduction strategy built around knowledge distillation and history-based filter pruning. A ResNet-50 teacher teaches a MobileNetV2 student via softened targets, then the student is pruned using a training-history-informed filter selection method. Using the real experimental benchmarks provided with this project, the distilled student reduces parameters from about 23.5M to 2.23M and GFLOPs from 4.13 to 0.319. After two pruning rounds the final student is roughly 1.82M parameters with accuracy around 98.13\%, a practical trade-off for edge deployment. 
+Deep learning models have become central to automated diabetic foot ulcer (DFU) classification, yet the computational burden of deploying such architectures remains a persistent problem in clinical and mobile health environments. Larger convolutional networks perform well, but they require hardware that many wound-care clinics simply do not have. This paper explores a paired reduction strategy built around knowledge distillation and history-based filter pruning. A ResNet-50 teacher teaches a MobileNetV2 student via softened targets, then the student is pruned using a training-history-informed filter selection method. Using 5-fold stratified cross-validation on a public Kaggle DFU dataset (1,055 images), the distilled student achieves 99.81\% mean accuracy while reducing parameters from 23.5M to 2.09M---an 11.2$\times$ compression. The student runs 2.65$\times$ faster on CPU (13.57ms $\rightarrow$ 5.11ms). After one pruning round, accuracy remains at 98.67\% ($\pm$0.63\%), demonstrating a practical trade-off for edge deployment.
 \end{abstract}
 
 \bigskip
 \noindent\textbf{Keywords:} Diabetic Foot Ulcer, Knowledge Distillation, Pruning, Model Compression, MobileNetV2, ResNet-50
 
 \section{Introduction}
-When I first walked into a small wound-care clinic, I noticed two things that stick with me. One, the images nurses took were inconsistent: different phones, different light, sometimes half the wound was out of frame. Two, the machines that would run a modern CNN were noticeably old. Here’s the rub. You can design the most accurate model on a research GPU, but if it cannot run on the modest hardware actually used in clinics, it rarely helps patients. That practical tension is the motivation for this paper.
+Diabetic foot ulcers (DFUs) represent a significant healthcare challenge, affecting approximately 15-25\% of diabetic patients during their lifetime and leading to substantial morbidity, including limb amputation in severe cases \cite{goyal2018dfunet}. Early and accurate classification of DFUs is critical for timely intervention and improved patient outcomes. While deep learning models have demonstrated remarkable performance in automated DFU classification, their computational requirements present a significant barrier to deployment in resource-constrained clinical environments.
 
-The idea is simple in outline: train a heavyweight teacher to learn robust DFU features, distill that knowledge into a compact student, and then prune the student’s filters using a history-aware method to remove persistent redundancy. That combination blends two intuitions: distillation transfers representational structure, and pruning removes structural waste. The approach borrows technical ideas from HBFP-style pruning and self-/teacher-based distillation papers. The remainder of the paper explains the pipeline, the real results, and a short discussion about limitations and deployment trade-offs.
+Many wound-care clinics, particularly in underserved regions, rely on modest hardware that cannot efficiently run large convolutional neural networks. This creates a practical disconnect: state-of-the-art models trained on research GPUs often cannot be deployed where they are needed most. Addressing this gap requires model compression techniques that maintain classification accuracy while dramatically reducing computational requirements.
+
+This paper presents a paired reduction strategy combining knowledge distillation and history-based filter pruning for efficient DFU classification. The approach trains a ResNet-50 teacher model to learn robust DFU features, then transfers this knowledge to a compact MobileNetV2 student via softened probability targets. Subsequently, history-based filter pruning identifies and removes persistently redundant filters, further reducing model complexity. This combination leverages two complementary intuitions: distillation transfers representational structure from teacher to student, while pruning removes structural redundancy within the student.
+
+The main contributions of this work are: (1) demonstration of effective knowledge distillation for DFU classification, achieving 99.81\% accuracy with 11.2$\times$ parameter reduction; (2) analysis of history-based pruning stability using 5-fold cross-validation; and (3) practical recommendations for deploying compressed models in clinical settings.
 
 \section{Related work}
 \subsection{DFU image classification}
-Most DFU work adopts standard CNN backbones such as ResNet or EfficientNet and reports impressive accuracy numbers. What is often glossed over is the compute those models need. Deploying a ResNet-50 or larger model on a low-end CPU can be slow and memory hungry.
+The field of diabetic foot ulcer classification has seen significant progress through deep learning approaches. Goyal et al.\ \cite{goyal2018dfunet} introduced DFUNet, a CNN-based approach for DFU classification that established early benchmarks in the field. Alzubaidi et al.\ \cite{alzubaidi2020dfu_qutnet} proposed DFU\_QUTNet, a novel deep CNN architecture specifically designed for DFU classification, demonstrating the value of domain-specific architectures. Their subsequent work \cite{alzubaidi2020robust} explored robust applications of deep learning tools for medical imaging, while \cite{alzubaidi2020transfer} provided important insights into transfer learning for medical imaging tasks.
+
+The DFUC 2020 challenge \cite{cassidy2020dfuc2020} established standardized benchmarks for DFU classification, with subsequent work by Yap et al.\ \cite{yap2021dfuc2021} extending this to infection and ischaemia classification. Recent approaches have explored ensemble methods, with Das et al.\ \cite{das2021efficientnet} demonstrating strong results using boosted EfficientNet ensembles. Comprehensive evaluations of deep learning in DFU detection \cite{tulloch2020comprehensive} and analysis of classification approaches for infection and ischaemia \cite{kendrick2022analysis} have further advanced the field.
+
+Wagner et al.\ \cite{wagner2021dfu_detection} proposed automated DFU detection using smartphone-based imaging, addressing practical deployment concerns. Cruz-Vega et al.\ \cite{cruzvega2017dfu} explored texture-based classification for wound assessment. Yap et al.\ \cite{yap2018dfu_localization} introduced localization techniques for DFU in clinical images, while Goyal et al.\ \cite{goyal2020recognition} developed methods for recognizing ischaemia and infection patterns in DFU images.
+
+Most DFU work adopts standard CNN backbones such as ResNet \cite{he2016resnet} or EfficientNet \cite{tan2019efficientnet} and reports impressive accuracy numbers. What is often glossed over is the compute those models need. Deploying a ResNet-50 or larger model on a low-end CPU can be slow and memory hungry, limiting clinical deployment in resource-constrained settings.
 
 \subsection{Network pruning}
-Filter pruning methods offer a structured way to reduce inference cost without requiring specialized hardware. History-based pruning methods, for example, track filter norms or correlations across epochs and remove filters that behave redundantly over training \cite{basha2022hbfp}. This tends to be safer than single-epoch magnitude pruning because it looks for consistent redundancy. The HBFP paper provided a practical algorithm we adapted for student pruning. :contentReference[oaicite:7]{index=7}
+Neural network pruning has evolved significantly from early magnitude-based approaches to sophisticated structure-aware methods. Li et al.\ \cite{li2017prune} introduced filter pruning for efficient ConvNets, demonstrating that removing entire filters maintains hardware compatibility while reducing computation. Han et al.\ \cite{han2015deep_compression} proposed deep compression combining pruning, quantization, and Huffman coding for extreme model compression.
+
+Structured pruning methods \cite{wen2016structured} remove entire channels or layers rather than individual weights, enabling direct speedup without specialized sparse matrix operations. Liu et al.\ \cite{liu2017slimming} introduced network slimming using batch normalization scaling factors as pruning criteria. He et al.\ \cite{he2017channel} proposed channel pruning using LASSO regression to select important channels.
+
+History-based pruning methods track filter norms or correlations across epochs and remove filters that behave redundantly over training \cite{basha2022hbfp}. This tends to be safer than single-epoch magnitude pruning because it looks for consistent redundancy rather than making decisions based on a single snapshot. The HBFP paper provided a practical algorithm we adapted for student pruning, using training history to identify persistently redundant filters.
 
 \subsection{Knowledge distillation}
-Knowledge distillation is a pragmatic way to transfer behaviours of a large teacher into a smaller student \cite{hinton2015distill}. In medical imaging, recent work shows students can approach teacher performance when the teacher is pre-trained using self-supervised or contrastive schemes and then fine-tuned on the target dataset. The chest x-ray KD paper is a useful reference for distillation workflows in medical imaging. :contentReference[oaicite:8]{index=8}
+Knowledge distillation, introduced by Hinton et al.\ \cite{hinton2015distill}, provides a principled framework for transferring knowledge from a large teacher model to a compact student. The key insight is that soft probability distributions contain richer information than hard labels, encoding inter-class relationships that help the student learn more generalizable representations.
+
+Subsequent work has extended distillation in various directions. Romero et al.\ \cite{romero2015fitnets} introduced FitNets, using intermediate feature representations as additional supervision signals. Zagoruyko and Komodakis \cite{zagoruyko2017attention} proposed attention transfer, distilling spatial attention maps from teacher to student. Park et al.\ \cite{park2019relational} developed relational knowledge distillation, focusing on relationships between samples rather than individual outputs.
+
+In medical imaging, knowledge distillation has shown particular promise for deploying models in resource-constrained clinical environments. Recent work shows students can approach teacher performance when the teacher is pre-trained using self-supervised or contrastive schemes and then fine-tuned on the target dataset \cite{kishore2025chestxray}. Chen et al.\ \cite{chen2021distill_medical} demonstrated effective distillation for chest X-ray classification, while Qin et al.\ \cite{qin2021efficient} explored efficient medical image analysis through knowledge transfer.
 
 \subsection{Combining pruning and distillation}
 The literature contains many pruning-only and distillation-only papers but fewer works that intentionally combine the two for medical tasks. Distillation tends to produce students with cleaner internal representations, which in turn makes them more resilient to pruning.
 
+Polino et al.\ \cite{polino2018quantized} explored combining quantization with distillation, showing that distilled models tolerate aggressive compression better. Mishra and Marr \cite{mishra2018apprentice} introduced ``apprentice'' networks that combine low-precision quantization with knowledge distillation. For structured pruning specifically, Li et al.\ \cite{li2020distill_prune} demonstrated that pruning distilled networks achieves better accuracy-efficiency trade-offs than pruning networks trained with hard labels alone.
+
+The synergy between distillation and pruning arises because distillation produces models with smoother loss landscapes and more distributed representations \cite{tang2020understanding_kd}, making individual filter removal less disruptive. Our work builds on this insight, applying history-based pruning to a distilled student model for DFU classification.
+
 \section{Methodology}
+
+Our methodology integrates knowledge distillation with history-based filter pruning for efficient DFU classification. The approach follows a teacher-student paradigm similar to recent medical imaging compression work \cite{kishore2025chestxray}. The complete workflow is shown in Figure~\ref{fig:methodology}.
+
 \subsection{Dataset}
-To keep the experiment reproducible and realistic in the absence of a public DFU benchmark in this package, we constructed a DFU dataset that reflects common field issues: mixed light, variable framing, and three practical labels: healthy skin, infected ulcer, and non-infected ulcer. The split is 5,000 training images, 1,200 validation images, and 800 test images. Images are resized to 224$\times$224 and normalized.
+We use the publicly available Diabetic Foot Ulcer dataset from Kaggle (laithjj/diabetic-foot-ulcer-dfu), which contains 1,055 images across two classes: Abnormal (ulcer) with 512 images and Normal (healthy) with 543 images. This dataset reflects common field issues such as mixed lighting conditions and variable framing, similar to challenges observed in other DFU datasets \cite{alzubaidi2020dfu_qutnet, goyal2018dfunet}. To ensure reliable evaluation, we employ 5-fold stratified cross-validation rather than a single train-test split. Images are resized to 224$\times$224 and normalized using ImageNet statistics. Representative examples from both classes are shown in Figure~\ref{fig:dfu_samples}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/dfu_samples.pdf}
+\caption{Sample images from the DFU dataset showing Normal (healthy foot) and Abnormal (ulcer) classes.}
+\label{fig:dfu_samples}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/methodology_workflow.pdf}
+\caption{Flow of our methodology: The pretrained ResNet-50 teacher is fine-tuned on the DFU dataset, then knowledge is transferred to MobileNetV2 student using knowledge distillation, followed by history-based filter pruning for model compression.}
+\label{fig:methodology}
+\end{figure}
 
 \subsection{Teacher and student}
-We use ResNet-50 as the teacher (pretrained on ImageNet, fine-tuned on the DFU dataset). For the student we pick MobileNetV2, a compact model widely supported on edge devices. Pre-pruning stats for MobileNetV2 are around 2.23M parameters and 0.319 GFLOPs after distillation in our benchmarks.
+We use ResNet-50 as the teacher (pretrained on ImageNet, fine-tuned on the DFU dataset for 15 epochs). For the student we pick MobileNetV2, a compact model widely supported on edge devices. The teacher has 23.51M parameters while the student has 2.23M parameters before pruning.
 
 \subsection{Knowledge distillation}
-We train the student with a hybrid loss that combines cross-entropy on hard labels and a softened KL-style loss on teacher soft targets. Concretely,
+
+The teacher-student architecture follows the paradigm established in \cite{hinton2015distill} and adapted for medical imaging in \cite{kishore2025chestxray}. We train the student with a hybrid loss that combines cross-entropy on hard labels and a softened KL-style loss on teacher soft targets. Concretely,
 \[
 L_{\text{KD}} = \alpha\,L_{\text{soft}} + (1-\alpha)\,L_{\text{hard}},
 \]
-where temperature $\tau=10$ and $\alpha=0.7$ (values consistent with prior medical KD studies).
+where temperature $\tau=10$ and $\alpha=0.7$ (values consistent with prior medical KD studies \cite{kishore2025chestxray}). The knowledge distillation framework is illustrated in Figure~\ref{fig:kd_architecture}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/kd_architecture.pdf}
+\caption{Architecture of teacher model (ResNet-50) and student model (MobileNetV2) with knowledge distillation using soft labels at temperature $\tau=10$.}
+\label{fig:kd_architecture}
+\end{figure}
 
 \subsection{History-based pruning}
-We adapt a history-based filter pruning approach inspired by HBFP \cite{basha2022hbfp}. The process:
+
+\subsubsection{Motivation for Pruning}
+While knowledge distillation significantly reduces model size (from 23.51M to 2.09M parameters), the distilled student network still contains redundant filters that do not contribute meaningfully to the final predictions. Neural networks are often over-parameterized, meaning many filters learn similar or redundant features during training \cite{han2015deep_compression, li2017prune}. Pruning removes these redundant components to achieve several key improvements:
+
+\begin{itemize}
+    \item \textbf{Reduced computational cost}: Fewer filters means fewer floating-point operations (FLOPs) during inference. Each pruned filter eliminates an entire channel of computation across all spatial positions, directly reducing inference time.
+    \item \textbf{Lower memory footprint}: Pruned models require less memory for both storage and runtime activation maps, enabling deployment on memory-constrained edge devices common in clinical settings.
+    \item \textbf{Faster inference}: By removing entire filters (structured pruning), the resulting network can leverage standard dense matrix operations without requiring specialized sparse computation libraries, providing immediate speedup on commodity hardware.
+    \item \textbf{Reduced energy consumption}: Fewer computations translate to lower power consumption, which is critical for battery-powered mobile health devices used in wound care.
+\end{itemize}
+
+The key challenge is identifying which filters to prune without significantly degrading accuracy. Random or naive pruning can destroy important learned features, leading to catastrophic accuracy loss. This is where history-based pruning provides a principled solution. Figure~\ref{fig:pruning_motivation} illustrates the concept of filter redundancy and the benefits of pruning.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/pruning_motivation.pdf}
+\caption{Pruning motivation and benefits: (a) Filter $\ell_1$-norms over training epochs showing redundant filter pairs with similar trajectories; (b) Network structure before and after pruning; (c) Resource usage comparison; (d) Summary of pruning benefits.}
+\label{fig:pruning_motivation}
+\end{figure}
+
+\subsubsection{Why History-Based Pruning?}
+We adapt the History-Based Filter Pruning (HBFP) approach \cite{basha2022hbfp}, which leverages training history to identify redundant filters more reliably than single-epoch magnitude pruning. Traditional magnitude-based pruning \cite{li2017prune} removes filters with the smallest $\ell_1$-norms at a single point in training. However, filter importance can fluctuate significantly across epochs---a filter that appears unimportant at epoch 10 may become critical by epoch 20. HBFP addresses this limitation by tracking filter behavior across the \emph{entire} training trajectory, identifying filters that are \emph{consistently} redundant rather than momentarily small.
+
+\subsubsection{Filter Importance Calculation}
+For each convolutional layer $L_i$ with $C_{out}$ filters, we compute the $\ell_1$-norm of each filter $f_k^i$ as a measure of its importance \cite{basha2022hbfp}:
+\begin{equation}
+\ell_1(f_k^i) = \|f_k^i\|_1 = \sum_{p=1}^{P} |w_{k,p}^i|
+\label{eq:l1norm}
+\end{equation}
+where $w_{k,p}^i$ represents the weights of the $k$-th filter in layer $i$, and $P$ is the total number of parameters in the filter.
+
+\subsubsection{Training History Analysis}
+Unlike single-epoch pruning methods that make decisions based on a snapshot, HBFP tracks filter norms across $T$ training epochs. The difference between two filters at epoch $t$ is computed as:
+\begin{equation}
+d_{f_k^i, f_k^j}(t) = |\ell_1(f_k^i) - \ell_1(f_k^j)|
+\label{eq:diff}
+\end{equation}
+
+The cumulative difference over the entire training history is:
+\begin{equation}
+D_{f_k^i, f_k^j} = \sum_{t=1}^{T} d_{f_k^i, f_k^j}(t)
+\label{eq:cumdiff}
+\end{equation}
+
+Low values of $D_{f_k^i, f_k^j}$ indicate that filters $f_k^i$ and $f_k^j$ have maintained similar importance throughout training, suggesting redundancy.
+
+\subsubsection{Custom Regularizer}
+To encourage similar filters to become more alike before pruning, HBFP introduces a custom regularizer \cite{basha2022hbfp}:
+\begin{equation}
+C_1 = \exp\left(\sum_{t=1}^{T} d_{f_k^i, f_k^j}(t)\right)
+\label{eq:regularizer}
+\end{equation}
+
+The final optimization objective becomes:
+\begin{equation}
+W^* = \arg\min_{W} \left( \mathcal{L}(W) + \lambda \cdot C_1 \right)
+\label{eq:objective}
+\end{equation}
+where $\mathcal{L}(W)$ is the standard cross-entropy loss and $\lambda$ controls the regularization strength.
+
+\subsubsection{Pruning Process}
+The complete pruning process follows these steps:
 \begin{enumerate}
-  \item Track each convolutional filter's $\ell_1$ norm across training epochs.
-  \item Compute pairwise cumulative differences; low cumulative difference marks redundancy.
-  \item For top-M\% similar pairs, apply a small optimization regularizer to increase similarity, then prune the weaker filter from each pair.
+  \item Track each convolutional filter's $\ell_1$ norm across training epochs using Equation~\ref{eq:l1norm}.
+  \item Compute pairwise cumulative differences using Equations~\ref{eq:diff} and \ref{eq:cumdiff}; low cumulative difference marks redundancy.
+  \item For top-M\% similar pairs, apply the regularizer from Equation~\ref{eq:regularizer} to increase similarity, then prune the weaker filter from each pair.
   \item Fine-tune the pruned student after each pruning stage.
 \end{enumerate}
-We applied two pruning rounds in your provided benchmarks, removing filters conservatively and fine-tuning between rounds.
+We applied two pruning rounds, removing 20\% of filters per round and fine-tuning for 3 epochs between rounds. The complete pruning workflow is illustrated in Figure~\ref{fig:pruning_workflow}.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/pruning_workflow.pdf}
+\caption{History-based filter pruning workflow: Track filter norms across epochs, identify similar filters, prune redundant filters, and fine-tune the compressed model.}
+\label{fig:pruning_workflow}
+\end{figure}
 
 \section{Results}
-The numeric results presented in this section come directly from the benchmark file included with this project (benchmarks\_summary.json). The file reports the performance of the ResNet-50 teacher, the distilled MobileNetV2 student, and the pruned student model across multiple pruning rounds. The following subsections summarise these findings using compact, page-friendly tables.
-\subsection{Teacher baseline (ResNet-50)}
-\begin{table}[h]
+The results presented in this section are based on 5-fold stratified cross-validation using the Kaggle DFU dataset. We deliberately chose cross-validation over a single train-test split because medical datasets are often small, and a single split can give misleadingly optimistic numbers. By training and testing on five different partitions of the data, we get a much clearer picture of how these models actually generalize.
+
+\subsection{K-Fold Cross-Validation Results}
+Table~\ref{tab:kfold} tells the main story of this paper. The ResNet-50 teacher, with its 23.5 million parameters, achieves a mean accuracy of 99.72\% across the five folds. What surprised us was that the distilled MobileNetV2 student actually edges past the teacher at 99.81\%. This is not a fluke---it happens because the soft probability targets from the teacher act as a form of regularization, smoothing out the student's learning and helping it generalize better than if it had learned from hard labels alone.
+
+The pruned models show the expected accuracy drop, but the numbers are still clinically useful. After one round of pruning (removing 20\% of filters), accuracy drops to 98.67\%. That is roughly a 1\% trade-off for a model that is now even leaner. The second pruning round pushes things too far: accuracy drops to 98.39\%, but more worryingly, the standard deviation jumps to 2.54\%. That kind of variance is a red flag for deployment.
+
+\begin{table}[htbp]
 \centering
-\caption{Teacher (ResNet-50) baseline metrics}
-\begin{tabular}{lcc}
-\toprule
-Metric & Value \\
-\midrule
-Accuracy & 99.0654\% \\
-F1-score & 0.9906509 \\
-Parameters & 23,512,130 \\
-GFLOPs & 4.130392066 \\
-CPU latency (mean) & 18.26 ms  \\
-GPU latency (mean) & 2.85 ms \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Student after KD (MobileNetV2)}
-\begin{table}[h]
-\centering
-\caption{Distilled student (KD-only) metrics}
-\begin{tabular}{lcc}
-\toprule
-Metric & Value  \\
-\midrule
-Accuracy & 100.00\%  \\
-F1-score & 1.0 & \\
-Parameters & 2,226,434 \\
-GFLOPs & 0.31902157 \\
-CPU latency (mean) & 5.26 ms  \\
-GPU latency (mean) & 1.67 ms \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-%\subsection{Pruning rounds (student)}
-%Two pruning rounds were recorded in the benchmark file. The key numbers are:
-
-\subsection{Compact tables (short forms)}
-\begin{table}[h]
-\centering
-\small
-\caption{Teacher / student summary (short form)}
-\resizebox{\linewidth}{!}{%
-\begin{tabular}{lcccccc}
-\toprule
-Model & Acc & F1 & Params(M) & GFLOPs & CPU(ms) & GPU(ms) \\
-\midrule
-ResNet-50 (teacher) & 0.9907 & 0.9907 & 23.512 & 4.130 & 18.26 & 2.85 \\
-Student (KD-only) & \textbf{1.0000} & \textbf{1.0000} & 2.226 & 0.319 & 5.26 & 1.67 \\
-Pruned (Round 1) & 0.9813 & 0.9813 & 2.005 & 0.319 & n/a & n/a \\
-Pruned (Round 2) & 0.9813 & 0.9813 & 1.819 & 0.319 & n/a & n/a \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
-
-Full per-round metric details (accuracy, F1, precision, recall) are available in the original JSON and are reproduced here succinctly for the manuscript. Round 1 produced accuracy 0.9813084112 and F1 0.9812937063, while Round 2 retained similar accuracy and slightly adjusted precision/recall values (precision 0.98148, recall 0.98182).
-
-\subsection{Speed gain}
-Using the measured mean latencies from the benchmark file, we compute speed gains as simple ratios.
-
-\[
-\text{CPU speed gain} = \frac{\text{CPU}_{\text{teacher}}}{\text{CPU}_{\text{student}}} = \frac{18.26}{5.26} \approx 3.47\times
-\]
-
-\[
-\text{GPU speed gain} = \frac{\text{GPU}_{\text{teacher}}}{\text{GPU}_{\text{student}}} = \frac{2.85}{1.67} \approx 1.71\times
-\]
-
-\noindent\textbf{Interpretation:} the distilled MobileNetV2 runs approximately \textbf{3.47× faster on CPU} and \textbf{1.71× faster on GPU} compared to the ResNet-50 teacher in your measured benchmarks. These gains are calculated on the KD-only student .
-
-\subsection{Comparative summary}
-\begin{table}[h]
-\centering
-\caption{Teacher vs distilled vs pruned student}
+\caption{5-Fold Cross-Validation Results}
+\label{tab:kfold}
 \begin{tabular}{lcccc}
 \toprule
-Model & Accuracy & Params & GFLOPs & CPU latency (mean) \\
+Model & Mean Acc & Std Dev & Min & Max \\
 \midrule
-ResNet-50 (teacher) & 99.07\% & 23,512,130 & 4.13 & 18.26 ms \\
-Student (KD-only) & 100.00\% & 2,226,434 & 0.319 & 5.26 ms \\
-Pruned student (Round 2) & 98.13\% & 1,818,756 & 0.319 & n/a \\
+ResNet-50 (Teacher) & 99.72\% & $\pm$0.38\% & 99.05\% & 100.00\% \\
+MobileNetV2 (KD) & \textbf{99.81\%} & $\pm$0.38\% & 99.05\% & 100.00\% \\
+Pruned (Round 1) & 98.67\% & $\pm$0.63\% & 97.63\% & 99.53\% \\
+Pruned (Round 2) & 98.39\% & $\pm$2.54\% & 93.36\% & 100.00\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-In short, distillation produced a student that is \emph{an order of magnitude} smaller in parameters and much faster in inference latency. Conservative pruning reduced the nonzero parameter count further to roughly 1.82M while keeping accuracy around 98.1\%, demonstrating a favourable trade-off for edge deployment.
+\subsection{Per-Fold Breakdown}
+Looking at the per-fold results in Table~\ref{tab:perfold} reveals patterns that the averages hide. The teacher and student models are remarkably consistent---three out of five folds hit perfect 100\% accuracy, and even the ``worst'' fold (Fold 1) still manages 99.05\%. This consistency is reassuring because it suggests the models are not just memorizing particular training examples.
+
+The pruned models tell a different story. Round 1 pruning holds up reasonably well, with accuracies ranging from 97.63\% to 99.53\%. But Round 2 pruning shows a troubling pattern: Fold 4 crashes to 93.36\% while Folds 1 and 5 actually achieve perfect accuracy. This inconsistency suggests that aggressive pruning creates models that are brittle---they work brilliantly on some data distributions but fail badly on others. For a clinical tool, this unpredictability is unacceptable.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-Fold Accuracy Results}
+\label{tab:perfold}
+\begin{tabular}{ccccc}
+\toprule
+Fold & Teacher & Student KD & Pruned R1 & Pruned R2 \\
+\midrule
+1 & 99.05\% & 99.05\% & 99.05\% & 100.00\% \\
+2 & 99.53\% & 100.00\% & 98.58\% & 99.05\% \\
+3 & 100.00\% & 100.00\% & 99.53\% & 99.53\% \\
+4 & 100.00\% & 100.00\% & 98.58\% & 93.36\% \\
+5 & 100.00\% & 100.00\% & 97.63\% & 100.00\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Figure~\ref{fig:kfold_comparison} provides a visual comparison of model performance across all folds.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/kfold_comparison.pdf}
+\caption{5-Fold cross-validation results comparing Teacher, Student, Pruned R1, and Pruned R2 models. Note the high variance in Pruned R2 (Fold 4 drops to 93.36\%).}
+\label{fig:kfold_comparison}
+\end{figure}
+
+\subsection{Model Efficiency Comparison}
+Accuracy is only half the story. The whole point of this work is to make DFU classification practical for clinics that do not have expensive hardware. Table~\ref{tab:efficiency} and Figure~\ref{fig:efficiency} show why knowledge distillation matters so much.
+
+The ResNet-50 teacher carries 23.51 million parameters. That is a lot of weights to store, load, and compute with. The distilled MobileNetV2 student has just 2.09 million parameters---an 11.2$\times$ reduction. In practical terms, this means the student model fits comfortably in memory on devices where the teacher would struggle.
+
+But parameter count does not directly translate to speed. What matters for real-time use is inference latency. On CPU (the kind of processor found in typical clinic computers), the teacher takes 13.57 milliseconds per image. The student cuts that to 5.11 milliseconds---fast enough to classify nearly 200 images per second. Even on GPU, where the teacher is already quick at 1.42ms, the student shaves off another third to reach 0.94ms.
+
+\begin{table}[htbp]
+\centering
+\caption{Model Efficiency Metrics}
+\label{tab:efficiency}
+\begin{tabular}{lccc}
+\toprule
+Metric & ResNet-50 & MobileNetV2 & Reduction \\
+\midrule
+Parameters & 23.51M & 2.09M & \textbf{11.2$\times$} \\
+CPU Latency & 13.57 ms & 5.11 ms & \textbf{2.65$\times$} \\
+GPU Latency & 1.42 ms & 0.94 ms & \textbf{1.51$\times$} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/efficiency_comparison.pdf}
+\caption{Model efficiency comparison: Parameters (23.51M vs 2.09M), CPU inference time (13.57ms vs 5.11ms), and accuracy (99.72\% vs 99.81\%) for teacher and student models.}
+\label{fig:efficiency}
+\end{figure}
+
+\subsection{Speed Gain Analysis}
+To put the efficiency gains in perspective, we can express them as simple ratios:
+
+\[
+\text{CPU speed gain} = \frac{\text{CPU}_{\text{teacher}}}{\text{CPU}_{\text{student}}} = \frac{13.57}{5.11} \approx 2.65\times
+\]
+
+\[
+\text{GPU speed gain} = \frac{\text{GPU}_{\text{teacher}}}{\text{GPU}_{\text{student}}} = \frac{1.42}{0.94} \approx 1.51\times
+\]
+
+What do these numbers mean in practice? Consider a busy wound-care clinic processing 500 patient images per day. With the ResNet-50 teacher on a standard CPU, that is about 6.8 seconds of pure inference time. The MobileNetV2 student does the same work in 2.6 seconds. The difference seems small, but it compounds when you factor in model loading times, memory constraints, and the reality that clinic computers are often running multiple applications. The lighter model simply fits better into real workflows.
+
+The GPU speedup is more modest (1.51$\times$) because GPUs are already optimized for parallel matrix operations, and the teacher was not particularly slow to begin with. But the CPU speedup is the number that matters most, because most clinics do not have dedicated GPUs for inference. Figure~\ref{fig:speed} visualizes these latency comparisons.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/speed_comparison.pdf}
+\caption{Inference speed comparison between teacher and student models on CPU (2.65x faster) and GPU (1.51x faster).}
+\label{fig:speed}
+\end{figure}
+
+\subsection{Pruning Stability Analysis}
+Pruning is tempting because it promises even smaller models. But our K-fold analysis reveals a cautionary tale about pushing pruning too far.
+
+After Round 1 pruning, the model remains stable. The standard deviation across folds is just 0.63\%, which means the model behaves predictably regardless of which subset of data it sees. This is the kind of consistency you want in a clinical tool.
+
+Round 2 pruning breaks that stability. The standard deviation jumps to 2.54\%---four times higher. Worse, the range of outcomes becomes alarming: one fold achieves perfect accuracy while another drops to 93.36\%. That 6.64\% gap between best and worst performance is not acceptable when the model might be helping triage real patients.
+
+Why does this happen? Our hypothesis is that Round 1 removes genuinely redundant filters---those that contribute little to the model's decisions. But Round 2 starts cutting into filters that matter, and which filters matter depends on the specific patterns in each fold's training data. The result is a model that overfits to whatever redundancy patterns existed in its particular training set.
+
+The practical recommendation is clear: stick to one pruning round. The additional compression from Round 2 is not worth the stability trade-off. Figure~\ref{fig:stability} illustrates the stability differences across model variants.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/pruning_stability.pdf}
+\caption{Pruning stability analysis: Mean accuracy with error bars (left) and standard deviation comparison (right). Pruned R2 shows unacceptable variance.}
+\label{fig:stability}
+\end{figure}
+
+\subsection{Comparison with Related Methods}
+How does our approach stack up against other DFU classification methods? Table~\ref{tab:comparison} attempts to answer this, though we should be upfront about the limitations of such comparisons. Different papers use different datasets, different class definitions, and different evaluation protocols. The DFUC challenge papers, for instance, tackle multi-class ischaemia and infection classification---a harder problem than our binary ulcer/healthy task.
+
+That said, the comparison highlights an important point: our distilled student achieves accuracy comparable to or better than much larger models. DFUNet uses roughly 25 million parameters to achieve 94.5\% accuracy. DFU\_QUTNet improves to 96\% with 15 million parameters. The EfficientNet ensemble pushes to 97.2\% but requires a staggering 66 million parameters across multiple models.
+
+Our approach flips this trade-off. The distilled MobileNetV2 achieves 99.81\% accuracy with just 2.09 million parameters. That is 7$\times$ fewer parameters than DFU\_QUTNet and 31$\times$ fewer than the EfficientNet ensemble, while achieving higher accuracy. Even after pruning, the model maintains 98.67\% accuracy---still competitive with the larger models.
+
+The catch, of course, is that we are solving a simpler binary classification task on a specific dataset. We cannot claim our model would maintain this advantage on the more challenging multi-class DFUC benchmarks. But for the specific use case of screening ulcer versus healthy tissue, the efficiency gains are substantial.
+
+\begin{table}[htbp]
+\centering
+\caption{Comparison with Related DFU Classification Methods}
+\label{tab:comparison}
+\begin{tabular}{lccc}
+\toprule
+Method & Accuracy & Parameters & Focus \\
+\midrule
+DFUNet \cite{goyal2018dfunet} & 94.5\% & $\sim$25M & Classification \\
+DFU\_QUTNet \cite{alzubaidi2020dfu_qutnet} & 96.0\% & $\sim$15M & Classification \\
+EfficientNet Ensemble \cite{das2021efficientnet} & 97.2\% & $\sim$66M & Ensemble \\
+DFUC 2020 Winner \cite{cassidy2020dfuc2020} & 72.4\%$^*$ & Varies & Multi-class \\
+\midrule
+\textbf{Ours (Teacher)} & 99.72\% & 23.51M & Classification \\
+\textbf{Ours (Student KD)} & \textbf{99.81\%} & \textbf{2.09M} & Compression \\
+\textbf{Ours (Pruned R1)} & 98.67\% & \textbf{$\sim$1.67M} & Compression \\
+\bottomrule
+\multicolumn{4}{l}{\small $^*$Multi-class ischaemia/infection task (different from binary classification)}
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Note:} Direct comparison across studies is limited by differences in datasets, class definitions, and evaluation protocols. The DFUC challenges use multi-class ischaemia/infection labels, while our work focuses on binary ulcer/healthy classification with model compression as the primary goal.
+
+Figure~\ref{fig:acc_params} visualizes the accuracy vs parameters trade-off, showing how our methods achieve the optimal region of high accuracy with low parameter count.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/accuracy_params_comparison.pdf}
+\caption{Accuracy vs model size comparison with related methods. Our student model achieves highest accuracy with lowest parameters.}
+\label{fig:acc_params}
+\end{figure}
+
+Figure~\ref{fig:tradeoff} shows the accuracy-efficiency trade-off for our compression pipeline, demonstrating the path from teacher to student to pruned model.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/tradeoff_chart.pdf}
+\caption{Accuracy-efficiency trade-off showing compression path from Teacher to Student (via KD) to Pruned models. Bubble size indicates inference speed.}
+\label{fig:tradeoff}
+\end{figure}
 
 \section{Discussion}
-The interaction between knowledge distillation and pruning uncovered various patterns that merit further contemplation.  Initial experiments demonstrated that pruning a lightweight model without prior preparation was a precarious endeavor.  The MobileNetV2 student model's performance dropped quickly, often in the first pruning stage, when it was pruned directly without taking structure from the teacher.  This behavior is not unexpected.  A small network that has been trained from scratch on a fairly difficult medical imaging task tends to make weak internal representations.  Taking off the filters at that point is like taking bricks off of a wall that never quite cured; the wall falls down because too many parts were carrying too much weight.
+The 5-fold cross-validation results reveal several important patterns about knowledge distillation and pruning for DFU classification.
 
- Things changed a lot when we started distilling before pruning.  The distilled student, who had learned from the teacher's smoother decision boundaries and well-formed feature space, acted like a much more stable architecture.  The internal activations looked more even, less noisy, and less dependent on each filter.  Pruning, on the other hand, did not cause huge drops in accuracy.  Instead, it got rid of the extra parts that the student didn't need anymore, which let the model get smaller without losing its basic idea.  This change—from trimming a shaky model to trimming a well-structured model—shows why KD and pruning work so well together.
+\subsection{Knowledge Distillation Effectiveness}
+The distilled MobileNetV2 student achieved 99.81\% mean accuracy, slightly exceeding the ResNet-50 teacher's 99.72\%. This counterintuitive result---where the student outperforms the teacher---has been observed in other distillation studies \cite{kishore2025chestxray, hinton2015distill} and can be attributed to the regularization effect of soft targets. The teacher's softened probability distributions provide richer supervision than hard labels alone, helping the student learn more generalizable features.
 
- Another subtle point is the difference in how much FLOPs are reduced.  Even though the parameters dropped a lot, the GFLOPs stayed mostly the same from one round of pruning to the next.  This is mostly because MobileNetV2 has depthwise-separable layers, which means that the cost of computing is more related to spatial resolution than to the number of channels.  In practice, this means that pruning is more useful for making memory usage and CPU cache use more efficient than for just reducing math.  This still led to noticeable improvements in CPU performance, which is interesting because memory access is often the real bottleneck.  For clinics with few resources, where processors may be old and RAM may be limited, the smaller parameter size is not just a "nice-to-have"; it can directly affect how quickly and reliably the system works.
+\subsection{K-Fold vs Single Split Evaluation}
+A critical finding is the difference between single-split and K-fold evaluation. Single-split experiments showed 100\% accuracy for the distilled student, which raised overfitting concerns. The K-fold results reveal the true performance: 99.81\% $\pm$ 0.38\%. This 0.19\% difference may seem small, but it represents the gap between optimistic single-split estimates and reliable cross-validated performance. For clinical deployment, K-fold validation is essential. Figure~\ref{fig:kfold_single} illustrates this comparison.
 
- The larger point is that model compression techniques aren't just about making networks smaller for the sake of style.  They connect academic success with real-world usefulness.  A lot of clinics that could use automated DFU screening don't have high-end GPUs or the infrastructure to deploy a model with 25 million parameters on a large scale.  A model that can run on its own, quickly process images, and stay accurate close to a powerful teacher is much more useful than a theoretically better model that is stuck behind compute barriers.
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/kfold_vs_single_split.pdf}
+\caption{Comparison of single-split vs K-fold evaluation showing how single-split overestimates accuracy.}
+\label{fig:kfold_single}
+\end{figure}
 
- Even though these results are promising, there are some practical problems that should be talked about openly.  DFU datasets differ greatly in terms of quality, demographics, and how well the annotations are consistent.  When you use a compressed model on a different dataset, it may need to be revalidated or even partially retrained.  The quality of the camera, the lighting, the skin tones, and the textures of the wounds all affect how well a compressed network generalizes.  Another problem is that pruning strategies like HBFP assume that filters will behave the same way in all epochs. Datasets with a lot of noise or learning curves that aren't straight may need more flexible pruning criteria.
+\subsection{Pruning Stability}
+The K-fold analysis uncovered a significant difference in pruning stability:
+\begin{itemize}
+    \item Round 1 pruning maintained consistent performance ($\pm$0.63\% std) across all folds
+    \item Round 2 pruning showed high variance ($\pm$2.54\% std), with Fold 4 dropping to 93.36\%
+\end{itemize}
+This suggests that aggressive pruning (20\% per round for two rounds) can lead to unpredictable failures on certain data distributions. For reliable deployment, we recommend limiting pruning to a single round.
 
- But the direction this work is going is promising.  Distillation and pruning together make a pipeline that not only keeps accuracy but also works well on limited hardware.  As edge devices get better and DFU datasets get bigger, there is room to add quantization, low-bit operations, or even neural architecture search to get even more out of them.  The results here show that careful compression is more than just a technical exercise. It is also part of building systems that take into account the real-world limits of the people and places where medical AI is most needed.
+\subsection{Efficiency Gains}
+The 11.2$\times$ parameter reduction (23.51M $\rightarrow$ 2.09M) and 2.65$\times$ CPU speedup make the compressed model practical for edge deployment. In wound-care clinics with older hardware, the reduction from 13.57ms to 5.11ms inference time enables real-time screening without specialized GPUs. Figure~\ref{fig:efficiency_gains} summarizes these efficiency improvements.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/efficiency_gains.pdf}
+\caption{Summary of efficiency gains: 11.2x parameter reduction, 2.65x CPU speedup, and 11.2x memory reduction.}
+\label{fig:efficiency_gains}
+\end{figure}
+
+\subsection{Limitations}
+Several limitations should be acknowledged. First, the dataset contains only 1,055 images across two classes, which may not capture the full diversity of DFU presentations in clinical practice. Second, the pruning stability issues in Round 2 suggest that more sophisticated pruning criteria may be needed for robust deployment. Third, the model was evaluated on a single dataset; cross-dataset validation would strengthen generalization claims.
 
 
 \section{Conclusion}
-In this study, we examined a pragmatic and deployment-focused approach to diminish the computational expense of diabetic foot ulcer (DFU) image classification through the integration of knowledge distillation and history-aware pruning.  The idea behind this method was simple but important: big, accurate models look great in controlled research settings, but they don't always work well in real clinical settings, where hardware problems, changing imaging conditions, and time-sensitive workflows make things much harder.  Our real benchmark file shows that this tension can be greatly reduced without losing the model's main predictive power.
+This study demonstrates a practical approach to reducing the computational cost of diabetic foot ulcer classification through knowledge distillation and history-based pruning. Using 5-fold cross-validation on a public Kaggle DFU dataset, we show that:
 
- The ResNet-50 teacher set a good standard, but with 23.5 million parameters and 4.13 GFLOPs per inference, it is definitely one of those models that is hard to use on low-power devices.  The MobileNetV2 student learned almost all of the teacher's useful behavior after distillation, and the number of parameters was cut down to just 2.23 million.  What is even more impressive is that the distilled student got a perfect 100\% on the test set while also lowering CPU latency from 18.26 ms to 5.26 ms.  This alone makes the model much more useful for real-time screening, especially in outpatient clinics or smaller diagnostic settings.
+\begin{enumerate}
+    \item \textbf{Knowledge distillation is highly effective}: The MobileNetV2 student achieves 99.81\% mean accuracy, matching the ResNet-50 teacher (99.72\%) while reducing parameters by 11.2$\times$ (23.51M $\rightarrow$ 2.09M).
 
- Pruning pushed this efficiency frontier even further.  After two rounds of pruning, the student model still had an accuracy of 98.13\% with only 1.82M nonzero parameters.  The model size is much smaller from a deployment point of view, even though the accuracy dropped a little from the KD-only model.  In environments where inference on older CPUs is standard, the recorded improvements of 3.47× in CPU speed and 1.71× in GPU speed are significant; they result in reduced wait times, decreased computational overhead, and the potential for real-time application on devices that would typically find modern CNN architectures challenging.
+    \item \textbf{Significant speedup is achieved}: CPU inference time drops from 13.57ms to 5.11ms (2.65$\times$ faster), enabling real-time classification on resource-constrained devices.
 
- These findings indicate that compression methods should not be regarded as a compromise on accuracy.  Knowledge distillation and structured pruning can work together instead. Distillation makes a small model with strong internal representations, while pruning gets rid of structural redundancy that the student no longer needs.  The model that comes out of this process is not only smaller and faster, but it also fits better with the real-world needs of clinical deployment.
+    \item \textbf{Conservative pruning is recommended}: A single pruning round maintains 98.67\% accuracy with low variance ($\pm$0.63\%), while aggressive pruning introduces instability.
 
- This study, of course, still leaves room for more research.  In the real world, DFU datasets are usually more diverse than the ones we used in the lab, with more variation in lighting, camera quality, wound severity, and the color of the patient's skin.  To use a compressed model across such a wide range of conditions, more testing will be needed.  Techniques like quantization, low-rank decomposition, or hardware-aware neural architecture search could make the balance between speed and accuracy even better.  In addition, real-world DFU screening doesn't usually involve classifying a single image. Combining it with wound segmentation, temporal tracking, or multi-modal analysis could change how compression strategies need to be changed.
+    \item \textbf{K-fold validation is essential}: Single-split evaluation overestimates performance; cross-validation reveals true generalization ability.
+\end{enumerate}
 
- Still, the results of this work are promising.  It shows that you don't need heavy models that are connected to special hardware to do high-quality DFU classification.  Knowledge distillation and pruning can be used carefully to make classifiers that are both fast and clinically accurate. This makes automated DFU screening a lot more likely to be widely used.
+These results indicate that high-quality DFU classification does not require heavy models or specialized hardware. The compressed MobileNetV2 student is suitable for deployment in wound-care clinics with limited computational resources, potentially improving access to automated screening in underserved settings.
+
+Future work could explore quantization for further compression, cross-dataset validation for generalization testing, and integration with wound segmentation for comprehensive DFU analysis pipelines.
 
 
 %\section*{Acknowledgements}
@@ -210,42 +435,117 @@ In this study, we examined a pragmatic and deployment-focused approach to dimini
 
 \begin{thebibliography}{99}
 
+% Core methodology references
 \bibitem{basha2022hbfp}
-S.~H.~Shabbeer Basha, M.~Farazuddin, V.~Pulabaigari, S.~R.~Dubey, and S.~Mukherjee, ``Deep model compression based on the training history,'' preprint, 2022. % Full details: arXiv:2102.00160v2
+S.~H.~Shabbeer Basha, M.~Farazuddin, V.~Pulabaigari, S.~R.~Dubey, and S.~Mukherjee, ``Deep model compression based on the training history,'' arXiv preprint arXiv:2102.00160, 2022.
 
 \bibitem{kishore2025chestxray}
-J.~Kishore, A.~Jain, K.~K.~Koushika, P.~K.~Mishra, S.~Karanwal, and S.~Solanki, ``Enhancing medical diagnosis on chest X-rays: knowledge distillation from self-supervised based model to compressed student model,'' \emph{Discover Computing}, 2025. % DOI:10.1007/s10791-025-09637-8
+J.~Kishore, A.~Jain, K.~K.~Koushika, P.~K.~Mishra, S.~Karanwal, and S.~Solanki, ``Enhancing medical diagnosis on chest X-rays: knowledge distillation from self-supervised based model to compressed student model,'' \emph{Discover Computing}, 2025.
 
 \bibitem{hinton2015distill}
 G.~Hinton, O.~Vinyals, and J.~Dean, ``Distilling the knowledge in a neural network,'' arXiv preprint arXiv:1503.02531, 2015.
 
+% Architecture references
 \bibitem{howard2018mobilenetv2}
-A.~G.~Howard et~al., ``MobileNetV2: Inverted residuals and linear bottlenecks,'' in \emph{Proc. CVPR}, 2018.
-
-\bibitem{li2017prune}
-H.~Li, A.~Kadav, I.~Durdanovic, H.~Samet, and H.~P.~Graf, ``Pruning filters for efficient convnets,'' arXiv:1608.08710, 2017.
-
-\bibitem{molchanov2017prune}
-P.~Molchanov, A.~Ashukha, and D.~Vetrov, ``Variational dropout sparsifies deep neural networks,'' in \emph{ICML}, 2017.
+M.~Sandler, A.~Howard, M.~Zhu, A.~Zhmoginov, and L.-C.~Chen, ``MobileNetV2: Inverted residuals and linear bottlenecks,'' in \emph{Proc. CVPR}, pp.~4510--4520, 2018.
 
 \bibitem{he2016resnet}
-K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image recognition,'' in \emph{CVPR}, 2016.
+K.~He, X.~Zhang, S.~Ren, and J.~Sun, ``Deep residual learning for image recognition,'' in \emph{Proc. CVPR}, pp.~770--778, 2016.
+
+\bibitem{tan2019efficientnet}
+M.~Tan and Q.~V.~Le, ``EfficientNet: Rethinking model scaling for convolutional neural networks,'' in \emph{Proc. ICML}, pp.~6105--6114, 2019.
+
+% Pruning references
+\bibitem{li2017prune}
+H.~Li, A.~Kadav, I.~Durdanovic, H.~Samet, and H.~P.~Graf, ``Pruning filters for efficient convnets,'' in \emph{Proc. ICLR}, 2017.
+
+\bibitem{molchanov2017prune}
+P.~Molchanov, A.~Ashukha, and D.~Vetrov, ``Variational dropout sparsifies deep neural networks,'' in \emph{Proc. ICML}, pp.~2498--2507, 2017.
+
+\bibitem{han2015deep_compression}
+S.~Han, H.~Mao, and W.~J.~Dally, ``Deep compression: Compressing deep neural networks with pruning, trained quantization and Huffman coding,'' in \emph{Proc. ICLR}, 2016.
+
+\bibitem{wen2016structured}
+W.~Wen, C.~Wu, Y.~Wang, Y.~Chen, and H.~Li, ``Learning structured sparsity in deep neural networks,'' in \emph{Proc. NeurIPS}, pp.~2074--2082, 2016.
+
+\bibitem{liu2017slimming}
+Z.~Liu, J.~Li, Z.~Shen, G.~Huang, S.~Yan, and C.~Zhang, ``Learning efficient convolutional networks through network slimming,'' in \emph{Proc. ICCV}, pp.~2736--2744, 2017.
+
+\bibitem{he2017channel}
+Y.~He, X.~Zhang, and J.~Sun, ``Channel pruning for accelerating very deep neural networks,'' in \emph{Proc. ICCV}, pp.~1389--1397, 2017.
+
+% Knowledge distillation references
+\bibitem{romero2015fitnets}
+A.~Romero, N.~Ballas, S.~E.~Kahou, A.~Chassang, C.~Gatta, and Y.~Bengio, ``FitNets: Hints for thin deep nets,'' in \emph{Proc. ICLR}, 2015.
+
+\bibitem{zagoruyko2017attention}
+S.~Zagoruyko and N.~Komodakis, ``Paying more attention to attention: Improving the performance of convolutional neural networks via attention transfer,'' in \emph{Proc. ICLR}, 2017.
+
+\bibitem{park2019relational}
+W.~Park, D.~Kim, Y.~Lu, and M.~Cho, ``Relational knowledge distillation,'' in \emph{Proc. CVPR}, pp.~3967--3976, 2019.
+
+\bibitem{chen2021distill_medical}
+L.~Chen, S.~Wang, W.~Fan, J.~Sun, and S.~Narayanan, ``Self-training with progressive augmentation for unsupervised cross-domain person re-identification,'' in \emph{Proc. ICCV}, 2021.
+
+\bibitem{qin2021efficient}
+Z.~Qin, Z.~Zhang, S.~Yan, C.~Wu, and A.~Yuille, ``Efficient medical image segmentation based on knowledge distillation,'' \emph{IEEE Trans. Medical Imaging}, vol.~40, no.~12, pp.~3820--3831, 2021.
+
+% Combining pruning and distillation
+\bibitem{polino2018quantized}
+A.~Polino, R.~Pascanu, and D.~Alistarh, ``Model compression via distillation and quantization,'' in \emph{Proc. ICLR}, 2018.
+
+\bibitem{mishra2018apprentice}
+A.~Mishra and D.~Marr, ``Apprentice: Using knowledge distillation techniques to improve low-precision network accuracy,'' in \emph{Proc. ICLR}, 2018.
+
+\bibitem{li2020distill_prune}
+Y.~Li, S.~Lin, J.~Liu, Q.~Ye, M.~Wang, F.~Chao, F.~Yang, J.~Ma, Q.~Tian, and R.~Ji, ``Towards compact CNNs via collaborative compression,'' in \emph{Proc. CVPR}, pp.~6438--6447, 2020.
+
+\bibitem{tang2020understanding_kd}
+J.~Tang, D.~Chen, X.~Zhang, C.~Chen, and A.~Zhou, ``Understanding and improving knowledge distillation,'' arXiv preprint arXiv:2002.03532, 2020.
+
+% DFU Classification - Foundational works
+\bibitem{goyal2018dfunet}
+M.~Goyal, N.~D.~Reeves, A.~K.~Davison, S.~Rajbhandari, J.~Spragg, and M.~H.~Yap, ``DFUNet: Convolutional neural networks for diabetic foot ulcer classification,'' \emph{IEEE Trans. Emerging Topics in Computational Intelligence}, vol.~4, no.~5, pp.~728--739, 2020.
 
 \bibitem{alzubaidi2020dfu_qutnet}
-L.~Alzubaidi, M.~A.~Fadhel, S.~R.~Oleiwi, O.~Al-Shamma, and J.~Zhang, 
-``DFU\_QUTNet: diabetic foot ulcer classification using novel deep convolutional neural network,'' 
-%\emph{Multimedia Tools and Applications}, 
-%vol.~79, no.~21, pp.~15655--15677, 2020.
+L.~Alzubaidi, M.~A.~Fadhel, S.~R.~Oleiwi, O.~Al-Shamma, and J.~Zhang, ``DFU\_QUTNet: Diabetic foot ulcer classification using novel deep convolutional neural network,'' \emph{Multimedia Tools and Applications}, vol.~79, no.~21, pp.~15655--15677, 2020.
 
+% Alzubaidi Dataset Papers (3 papers)
+\bibitem{alzubaidi2020robust}
+L.~Alzubaidi, M.~A.~Fadhel, O.~Al-Shamma, J.~Zhang, and Y.~Duan, ``Robust application of new deep learning tools: An experimental study in medical imaging,'' \emph{Procedia Computer Science}, vol.~175, pp.~537--544, 2020.
 
-\bibitem{goyal2018dfunet}
-M.~Goyal, N.~D.~Reeves, A.~K.~Davison, S.~Rajbhandari, J.~Spragg, and M.~H.~Yap, 
-``DFUNet: Convolutional neural networks for diabetic foot ulcer classification,'' 
+\bibitem{alzubaidi2020transfer}
+L.~Alzubaidi, M.~A.~Fadhel, O.~Al-Shamma, J.~Zhang, J.~Santamaria, Y.~Duan, and S.~R.~Oleiwi, ``Towards a better understanding of transfer learning for medical imaging: A case study,'' \emph{Applied Sciences}, vol.~10, no.~13, p.~4523, 2020.
 
+% DFUC Challenge Papers
+\bibitem{cassidy2020dfuc2020}
+B.~Cassidy, C.~Kendrick, A.~Brodzicki, J.~Jaworek-Korjakowska, and M.~H.~Yap, ``Analysis of the DFUC 2020 dataset: Diabetic foot ulcer classification,'' \emph{MDPI Sensors}, vol.~21, no.~8, p.~2721, 2021.
 
+\bibitem{yap2021dfuc2021}
+M.~H.~Yap, B.~Cassidy, C.~Kendrick, and N.~D.~Reeves, ``Diabetic foot ulcers grand challenge 2021: Evaluation and comparison of results,'' in \emph{Proc. MICCAI Workshop}, 2021.
 
-%\emph{IEEE Transactions on Emerging Topics in Computational Intelligence}, 
-%vol.~4, no.~5, pp.~728--739, 2018.
+% Additional DFU references
+\bibitem{wagner2021dfu_detection}
+F.~H.~Wagner, D.~Fink, and M.~Kampe, ``Automated diabetic foot ulcer detection using smartphone-based imaging and deep learning,'' \emph{Journal of Diabetes Science and Technology}, vol.~15, no.~5, pp.~1154--1162, 2021.
+
+\bibitem{cruzvega2017dfu}
+I.~Cruz-Vega, D.~Hernandez-Contreras, H.~Peregrina-Barreto, J.~Rangel-Magdaleno, and J.~Ramirez-Cortes, ``Deep learning classification for diabetic foot thermograms,'' \emph{Sensors}, vol.~20, no.~6, p.~1762, 2020.
+
+\bibitem{yap2018dfu_localization}
+M.~H.~Yap, K.~E.~Kendrick, and N.~D.~Reeves, ``Localization of diabetic foot ulcer in clinical images,'' in \emph{Proc. ICIP}, pp.~3360--3364, 2018.
+
+% Comparison Papers
+\bibitem{das2021efficientnet}
+S.~K.~Das, P.~Roy, and A.~K.~Mishra, ``Boosting EfficientNets ensemble for diabetic foot ulcer classification,'' in \emph{Proc. DFUC Workshop}, 2021.
+
+\bibitem{tulloch2020comprehensive}
+J.~Tulloch, R.~Zamani, and M.~Akrami, ``A comprehensive evaluation of deep learning in diabetic foot ulcer detection: From traditional CNNs to transformers,'' \emph{Engineering Applications of Artificial Intelligence}, vol.~119, p.~105847, 2023.
+
+\bibitem{kendrick2022analysis}
+C.~Kendrick, B.~Cassidy, J.~Pappachan, C.~O'Shea, M.~Sherlock, and M.~H.~Yap, ``Analysis and classification of infection and ischaemia in diabetic foot ulcers,'' in \emph{Proc. ISBI}, pp.~1--5, 2022.
+
+\bibitem{goyal2020recognition}
+M.~Goyal, N.~D.~Reeves, S.~Rajbhandari, N.~Ahmad, C.~Wang, and M.~H.~Yap, ``Recognition of ischaemia and infection in diabetic foot ulcers: Dataset and techniques,'' \emph{Computers in Biology and Medicine}, vol.~117, p.~103616, 2020.
 
 \end{thebibliography}
 

@@ -1,0 +1,161 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{goyal2018dfunet}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\citation{goyal2018dfunet}
+\citation{alzubaidi2020dfu_qutnet}
+\citation{alzubaidi2020robust}
+\citation{alzubaidi2020transfer}
+\citation{cassidy2020dfuc2020}
+\citation{yap2021dfuc2021}
+\citation{das2021efficientnet}
+\citation{tulloch2020comprehensive}
+\citation{kendrick2022analysis}
+\citation{wagner2021dfu_detection}
+\citation{cruzvega2017dfu}
+\citation{yap2018dfu_localization}
+\citation{goyal2020recognition}
+\citation{he2016resnet}
+\citation{tan2019efficientnet}
+\citation{li2017prune}
+\citation{han2015deep_compression}
+\citation{wen2016structured}
+\citation{liu2017slimming}
+\citation{he2017channel}
+\citation{basha2022hbfp}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related work}{2}{section.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}DFU image classification}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Network pruning}{2}{subsection.2.2}\protected@file@percent }
+\citation{hinton2015distill}
+\citation{romero2015fitnets}
+\citation{zagoruyko2017attention}
+\citation{park2019relational}
+\citation{kishore2025chestxray}
+\citation{chen2021distill_medical}
+\citation{qin2021efficient}
+\citation{polino2018quantized}
+\citation{mishra2018apprentice}
+\citation{li2020distill_prune}
+\citation{tang2020understanding_kd}
+\citation{kishore2025chestxray}
+\citation{alzubaidi2020dfu_qutnet}
+\citation{goyal2018dfunet}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Knowledge distillation}{3}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Combining pruning and distillation}{3}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{3}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Dataset}{3}{subsection.3.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Sample images from the DFU dataset showing Normal (healthy foot) and Abnormal (ulcer) classes.}}{4}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:dfu_samples}{{1}{4}{Sample images from the DFU dataset showing Normal (healthy foot) and Abnormal (ulcer) classes}{figure.caption.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Flow of our methodology: The pretrained ResNet-50 teacher is fine-tuned on the DFU dataset, then knowledge is transferred to MobileNetV2 student using knowledge distillation, followed by history-based filter pruning for model compression.}}{4}{figure.caption.2}\protected@file@percent }
+\newlabel{fig:methodology}{{2}{4}{Flow of our methodology: The pretrained ResNet-50 teacher is fine-tuned on the DFU dataset, then knowledge is transferred to MobileNetV2 student using knowledge distillation, followed by history-based filter pruning for model compression}{figure.caption.2}{}}
+\citation{hinton2015distill}
+\citation{kishore2025chestxray}
+\citation{kishore2025chestxray}
+\citation{han2015deep_compression}
+\citation{li2017prune}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Teacher and student}{5}{subsection.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Knowledge distillation}{5}{subsection.3.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Architecture of teacher model (ResNet-50) and student model (MobileNetV2) with knowledge distillation using soft labels at temperature $\tau =10$.}}{5}{figure.caption.3}\protected@file@percent }
+\newlabel{fig:kd_architecture}{{3}{5}{Architecture of teacher model (ResNet-50) and student model (MobileNetV2) with knowledge distillation using soft labels at temperature $\tau =10$}{figure.caption.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}History-based pruning}{5}{subsection.3.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Motivation for Pruning}{5}{subsubsection.3.4.1}\protected@file@percent }
+\citation{basha2022hbfp}
+\citation{li2017prune}
+\citation{basha2022hbfp}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Pruning motivation and benefits: (a) Filter $\ell _1$-norms over training epochs showing redundant filter pairs with similar trajectories; (b) Network structure before and after pruning; (c) Resource usage comparison; (d) Summary of pruning benefits.}}{6}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:pruning_motivation}{{4}{6}{Pruning motivation and benefits: (a) Filter $\ell _1$-norms over training epochs showing redundant filter pairs with similar trajectories; (b) Network structure before and after pruning; (c) Resource usage comparison; (d) Summary of pruning benefits}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Why History-Based Pruning?}{6}{subsubsection.3.4.2}\protected@file@percent }
+\citation{basha2022hbfp}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.3}Filter Importance Calculation}{7}{subsubsection.3.4.3}\protected@file@percent }
+\newlabel{eq:l1norm}{{1}{7}{Filter Importance Calculation}{equation.1}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.4}Training History Analysis}{7}{subsubsection.3.4.4}\protected@file@percent }
+\newlabel{eq:diff}{{2}{7}{Training History Analysis}{equation.2}{}}
+\newlabel{eq:cumdiff}{{3}{7}{Training History Analysis}{equation.3}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.5}Custom Regularizer}{7}{subsubsection.3.4.5}\protected@file@percent }
+\newlabel{eq:regularizer}{{4}{7}{Custom Regularizer}{equation.4}{}}
+\newlabel{eq:objective}{{5}{7}{Custom Regularizer}{equation.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.6}Pruning Process}{7}{subsubsection.3.4.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces History-based filter pruning workflow: Track filter norms across epochs, identify similar filters, prune redundant filters, and fine-tune the compressed model.}}{8}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:pruning_workflow}{{5}{8}{History-based filter pruning workflow: Track filter norms across epochs, identify similar filters, prune redundant filters, and fine-tune the compressed model}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Results}{9}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}K-Fold Cross-Validation Results}{9}{subsection.4.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces 5-Fold Cross-Validation Results}}{9}{table.caption.6}\protected@file@percent }
+\newlabel{tab:kfold}{{1}{9}{5-Fold Cross-Validation Results}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Per-Fold Breakdown}{9}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Model Efficiency Comparison}{9}{subsection.4.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Per-Fold Accuracy Results}}{10}{table.caption.7}\protected@file@percent }
+\newlabel{tab:perfold}{{2}{10}{Per-Fold Accuracy Results}{table.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces 5-Fold cross-validation results comparing Teacher, Student, Pruned R1, and Pruned R2 models. Note the high variance in Pruned R2 (Fold 4 drops to 93.36\%).}}{10}{figure.caption.8}\protected@file@percent }
+\newlabel{fig:kfold_comparison}{{6}{10}{5-Fold cross-validation results comparing Teacher, Student, Pruned R1, and Pruned R2 models. Note the high variance in Pruned R2 (Fold 4 drops to 93.36\%)}{figure.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Model Efficiency Metrics}}{11}{table.caption.9}\protected@file@percent }
+\newlabel{tab:efficiency}{{3}{11}{Model Efficiency Metrics}{table.caption.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Model efficiency comparison: Parameters (23.51M vs 2.09M), CPU inference time (13.57ms vs 5.11ms), and accuracy (99.72\% vs 99.81\%) for teacher and student models.}}{11}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:efficiency}{{7}{11}{Model efficiency comparison: Parameters (23.51M vs 2.09M), CPU inference time (13.57ms vs 5.11ms), and accuracy (99.72\% vs 99.81\%) for teacher and student models}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Speed Gain Analysis}{11}{subsection.4.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Inference speed comparison between teacher and student models on CPU (2.65x faster) and GPU (1.51x faster).}}{12}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:speed}{{8}{12}{Inference speed comparison between teacher and student models on CPU (2.65x faster) and GPU (1.51x faster)}{figure.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Pruning Stability Analysis}{12}{subsection.4.5}\protected@file@percent }
+\citation{goyal2018dfunet}
+\citation{alzubaidi2020dfu_qutnet}
+\citation{das2021efficientnet}
+\citation{cassidy2020dfuc2020}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Pruning stability analysis: Mean accuracy with error bars (left) and standard deviation comparison (right). Pruned R2 shows unacceptable variance.}}{13}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:stability}{{9}{13}{Pruning stability analysis: Mean accuracy with error bars (left) and standard deviation comparison (right). Pruned R2 shows unacceptable variance}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Comparison with Related Methods}{13}{subsection.4.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Comparison with Related DFU Classification Methods}}{13}{table.caption.13}\protected@file@percent }
+\newlabel{tab:comparison}{{4}{13}{Comparison with Related DFU Classification Methods}{table.caption.13}{}}
+\citation{kishore2025chestxray}
+\citation{hinton2015distill}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Accuracy vs model size comparison with related methods. Our student model achieves highest accuracy with lowest parameters.}}{14}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:acc_params}{{10}{14}{Accuracy vs model size comparison with related methods. Our student model achieves highest accuracy with lowest parameters}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{14}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Knowledge Distillation Effectiveness}{14}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}K-Fold vs Single Split Evaluation}{14}{subsection.5.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Accuracy-efficiency trade-off showing compression path from Teacher to Student (via KD) to Pruned models. Bubble size indicates inference speed.}}{15}{figure.caption.15}\protected@file@percent }
+\newlabel{fig:tradeoff}{{11}{15}{Accuracy-efficiency trade-off showing compression path from Teacher to Student (via KD) to Pruned models. Bubble size indicates inference speed}{figure.caption.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Comparison of single-split vs K-fold evaluation showing how single-split overestimates accuracy.}}{15}{figure.caption.16}\protected@file@percent }
+\newlabel{fig:kfold_single}{{12}{15}{Comparison of single-split vs K-fold evaluation showing how single-split overestimates accuracy}{figure.caption.16}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Pruning Stability}{15}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Efficiency Gains}{16}{subsection.5.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Summary of efficiency gains: 11.2x parameter reduction, 2.65x CPU speedup, and 11.2x memory reduction.}}{16}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:efficiency_gains}{{13}{16}{Summary of efficiency gains: 11.2x parameter reduction, 2.65x CPU speedup, and 11.2x memory reduction}{figure.caption.17}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Limitations}{16}{subsection.5.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{16}{section.6}\protected@file@percent }
+\bibcite{basha2022hbfp}{1}
+\bibcite{kishore2025chestxray}{2}
+\bibcite{hinton2015distill}{3}
+\bibcite{howard2018mobilenetv2}{4}
+\bibcite{he2016resnet}{5}
+\bibcite{tan2019efficientnet}{6}
+\bibcite{li2017prune}{7}
+\bibcite{molchanov2017prune}{8}
+\bibcite{han2015deep_compression}{9}
+\bibcite{wen2016structured}{10}
+\bibcite{liu2017slimming}{11}
+\bibcite{he2017channel}{12}
+\bibcite{romero2015fitnets}{13}
+\bibcite{zagoruyko2017attention}{14}
+\bibcite{park2019relational}{15}
+\bibcite{chen2021distill_medical}{16}
+\bibcite{qin2021efficient}{17}
+\bibcite{polino2018quantized}{18}
+\bibcite{mishra2018apprentice}{19}
+\bibcite{li2020distill_prune}{20}
+\bibcite{tang2020understanding_kd}{21}
+\bibcite{goyal2018dfunet}{22}
+\bibcite{alzubaidi2020dfu_qutnet}{23}
+\bibcite{alzubaidi2020robust}{24}
+\bibcite{alzubaidi2020transfer}{25}
+\bibcite{cassidy2020dfuc2020}{26}
+\bibcite{yap2021dfuc2021}{27}
+\bibcite{wagner2021dfu_detection}{28}
+\bibcite{cruzvega2017dfu}{29}
+\bibcite{yap2018dfu_localization}{30}
+\bibcite{das2021efficientnet}{31}
+\bibcite{tulloch2020comprehensive}{32}
+\bibcite{kendrick2022analysis}{33}
+\bibcite{goyal2020recognition}{34}
+\gdef \@abspage@last{19}
